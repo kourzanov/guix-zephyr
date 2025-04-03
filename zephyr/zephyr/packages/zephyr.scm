@@ -390,6 +390,19 @@ language is C.")
          (variable "GNUARMEMB_TOOLCHAIN_PATH")
          (files '(""))))))))
 
+(define-public gdb-12
+  (package
+    (inherit gdb/pinned)
+    (version "12.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://gnu/gdb/gdb-"
+                                  version ".tar.xz"))
+              (sha256
+               (base32
+                "0wkprsjyyh204fdjlkaz20k847l88i9y8m9zqsv15vcd3l3dhk9d"))))
+    (properties '())))
+
 (define-public gdb-arm-zephyr-eabi
   ;; XXX: Does not work... I do not know why.
   (package
