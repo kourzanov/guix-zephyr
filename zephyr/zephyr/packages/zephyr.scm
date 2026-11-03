@@ -53,6 +53,7 @@
   #:use-module (gnu packages embedded)
   #:use-module (gnu packages bootloaders)
   #:use-module (gnu packages bison)
+  ;#:use-module (zephyr build-system zephyr))
   #:use-module ((zephyr packages) #:prefix zephyr:)
   #:use-module (zephyr packages python-xyz))
 
@@ -496,6 +497,55 @@ as host tools like dtc, openocd, and qemu.")
                       (sha256
                        (base32 "0mca9ca8b2xjwjg0vl5858fd9l6h0m1jqbd3zr651zryf2897a80"))
                       (patches
+                       (zephyr:search-patches "zephyr-3.1-linker-gen-abs-path.patch"))))
+      (build-system copy-build-system)
+      (arguments
+       `(#:install-plan
+         '(("." "zephyr-workspace/zephyr"))
+         #:phases
+         (modify-phases %standard-phases
+           (add-after 'unpack 'patch-cmake-scripts
+             (lambda* _
+               (format #t "~a~&" (getcwd))
+               ;; Some cmake scripts assume the presence of a
+               ;; git repository in the source directory.
+               ;; We will just hard-code that information now
+               (substitute* "CMakeLists.txt"
+                 (("if\\(DEFINED BUILD_VERSION\\)" all)
+                  (format #f "set(BUILD_VERSION \"~a-~a\")~&~a"
+                          ,version ,commit all))))))))
+      (propagated-inputs
+       (list python-3
+             python-pyelftools
+             python-pykwalify
+             python-pyyaml
+             python-packaging))
+      (native-search-paths
+       (list (search-path-specification
+              (variable "ZEPHYR_BASE")
+              (files '("zephyr-workspace/zephyr")))
+             (search-path-specification
+              (variable "CMAKE_PREFIX_PATH")
+              (files '("zephyr-workspace/zephyr/share/zephyr-package/cmake")))))
+      (synopsis "Source code for zephyr rtos")
+      (description "Zephyr rtos source code.")
+      (license license:apsl2))))
+
+(define-public zephyr-4.5
+  (let ((version "4.5.0")
+        (commit "zephyr-v4.5.0"))
+    (package
+      (name "zephyr")
+      (version (git-version version "0" commit))
+      (home-page "https://zephyrproject.org")
+      (source (origin (method git-fetch)
+                      (uri (git-reference
+                            (url "https://github.com/zephyrproject-rtos/zephyr")
+                            (commit (substring commit 7))))
+                      (file-name (git-file-name name version))
+                      (sha256
+                       (base32 "1k28w8hvfxd442bfsipdf7wf5j5sdaln1lx5zrx4xn7vskxx6w47"))
+                      #;(patches
                        (zephyr:search-patches "zephyr-3.1-linker-gen-abs-path.patch"))))
       (build-system copy-build-system)
       (arguments
