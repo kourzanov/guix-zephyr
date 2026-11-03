@@ -48,7 +48,7 @@
        `(#:modules
 	 ((ice-9 match)
 	  (ice-9 ftw)
-	  ,@%gnu-build-system-modules)
+	  ,@%default-gnu-imported-modules)
 	 #:phases
 	 (modify-phases %standard-phases
 	   (add-after 'install 'hall-wrap-binaries

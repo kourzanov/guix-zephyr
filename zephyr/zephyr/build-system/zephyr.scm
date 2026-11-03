@@ -61,7 +61,7 @@
               'arm-zephyr-eabi-sdk))
 
 (define default-ninja
-  (module-ref (resolve-interface '(gnu packages ninja))
+  (module-ref (resolve-interface '(gnu packages build-tools))
               'ninja))
 
 (define default-cmake
