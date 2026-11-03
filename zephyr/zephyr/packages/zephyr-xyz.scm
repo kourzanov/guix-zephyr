@@ -293,7 +293,7 @@ for GigaDevice MCUs")
 for GigaDevice MCUs")
       (license license:apsl2))))
 
-(define-public zephyr-hal-infineon
+#;(define-public zephyr-hal-infineon
   (let ((commit "4af06965f57ba1e7d170e6a97d24c33785543a8c"))
     (package
       (name "zephyr-hal-infineon")
@@ -712,7 +712,7 @@ following operating environments:
       (description "A little fail-safe filesystem designed for microcontrollers")
       (license license:bsd-3))))
 
-(define-public zephyr-loramac-node
+#;(define-public zephyr-loramac-node
   (let ((commit "0257b50905695192d095667b1c3abb80346db1a1"))
     (package
       (name "zephyr-loramac-node")
@@ -1201,7 +1201,7 @@ primitives")
       (description "Trace Recorder source code for use with Percepio's Tracealyzer")
       (license license:apsl2))))
 
-(define-public zephyr-trusted-firmware-m
+#;(define-public zephyr-trusted-firmware-m
   (let ((commit "f13209f1883232cbcb9f0c31fb4c63e7c242df0d"))
     (package
       (name "zephyr-trusted-firmware-m")
@@ -1233,7 +1233,7 @@ enabling chips, Real Time Operating Systems and devices to become PSA
 Certified." )
       (license (license:non-copyleft (file-append source "/license.rst"))))))
 
-(define-public zephyr-tf-m-tests
+#;(define-public zephyr-tf-m-tests
   (let ((commit "c99a86b295c4887520da9d8402566d7f225c974e"))
     (package
       (name "zephyr-tf-m-tests")
