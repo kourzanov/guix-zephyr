@@ -63,7 +63,34 @@
       (home-page "https://zephyrproject.org")
       (synopsis "binutils for zephyr RTOS"))))
 
-(define-public gcc-riscv32-zephyr-elf-12
+(define-public riscv32-zephyr-elf-binutils
+  (let ((xbinutils (cross-binutils "riscv32-zephyr-elf")))
+    (package
+      (inherit xbinutils)
+      (name "riscv32-zephyr-elf-binutils")
+      (version "2.43.1")
+      (source
+       (origin (method git-fetch)
+	       (uri (git-reference
+		     (url "https://github.com/zephyrproject-rtos/binutils-gdb")
+		     (commit "471493f6b7f688d9fa570403b7a08db73bfdfcde")))
+	       (file-name (git-file-name name version))
+	       (sha256 (base32 "09y52x4gfklsw66l70p129n9m1mw764xyfqpsyahn9c28g83fsng"))))
+      (arguments
+       (substitute-keyword-arguments (package-arguments xbinutils)
+	 ((#:tests? tests '()) #f)
+	 ((#:configure-flags flags)
+	  #~(cons* "--enable-multilib"
+		   "--disable-gdb"
+		   "--disable-sim"
+		   #$flags))))
+      (native-inputs (modify-inputs
+	(package-native-inputs xbinutils)
+        (append texinfo bison flex gmp dejagnu)))
+      (home-page "https://zephyrproject.org")
+      (synopsis "binutils for zephyr RTOS"))))
+
+#;(define-public gcc-riscv32-zephyr-elf-12
   (let ((xgcc (cross-gcc "riscv32-zephyr-elf"
 			 #:xgcc gcc-12
 			 #:xbinutils riscv32-zephyr-elf-binutils)))
@@ -91,6 +118,92 @@
        (substitute-keyword-arguments (package-arguments xgcc)
 	 ((#:phases phases)
 	  #~(modify-phases #$phases
+	      (add-after 'unpack 'fix-genmultilib
+		(lambda _
+		  (substitute* "gcc/genmultilib"
+		    (("#!/bin/sh") (string-append "#!" (which "sh"))))
+		  #t))
+	      (add-after 'set-paths 'augment-CPLUS_INCLUDE_PATH
+		(lambda* (#:key inputs #:allow-other-keys)
+		  (let ((gcc (assoc-ref inputs  "gcc")))
+		    ;; Remove the default compiler from CPLUS_INCLUDE_PATH to
+		    ;; prevent header conflict with the GCC from native-inputs.
+		    (setenv "CPLUS_INCLUDE_PATH"
+			    (string-join
+			     (delete (string-append gcc "/include/c++")
+				     (string-split (getenv "CPLUS_INCLUDE_PATH")
+						   #\:))
+			     ":"))
+		    (format #t
+			    "environment variable `CPLUS_INCLUDE_PATH' changed to ~a~%"
+			    (getenv "CPLUS_INCLUDE_PATH"))
+		    #t)))))
+	 ((#:configure-flags flags)
+	  #~(append (list "--enable-multilib"
+			  "--with-newlib"
+			  ;"--with-multilib-list=rmprofile"
+			  "--with-host-libstdcxx=-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm"
+			  "--enable-plugins"
+			  "--disable-libatomic"
+			  "--disable-libgomp"
+			  "--disable-libmudflap"
+			  "--disable-libquadmath"
+			  "--disable-libssp"
+			  "--disable-nls"
+			  "--disable-shared"
+			  "--disable-threads"
+			  "--disable-tls"
+			  "--with-gnu-ld"
+			  "--with-gnu-as"
+			  "--enable-initfini-array")
+		    (delete "--disable-multilib" #$flags)))
+	 ((#:make-flags flags)
+	  #~(append '("CFLAGS_FOR_TARGET=-g -O2")
+		    #$flags))))
+      (native-search-paths
+       (list (search-path-specification
+	      (variable "CROSS_C_INCLUDE_PATH")
+	      (files '("riscv32-zephyr-elf/include")))
+	     (search-path-specification
+	      (variable "CROSS_CPLUS_INCLUDE_PATH")
+	      (files '("riscv32-zephyr-elf/include"
+		       "riscv32-zephyr-elf/c++"
+		       "riscv32-zephyr-elf/c++/riscv32-zephyr-elf")))
+	     (search-path-specification
+	      (variable "CROSS_LIBRARY_PATH")
+	      (files '("riscv32-zephyr-elf/lib")))))
+      (home-page "https://zephyrproject.org")
+      (synopsis "GCC for zephyr RTOS"))))
+
+(define-public gcc-riscv32-zephyr-elf-14
+  (let ((xgcc (cross-gcc "riscv32-zephyr-elf"
+			 #:xgcc gcc-14
+			 #:xbinutils riscv32-zephyr-elf-binutils)))
+    (package
+      (inherit xgcc)
+      (name "gcc-riscv32-zephyr-elf")
+      (version "14.3.0")
+      (source (origin (method git-fetch)
+		      (uri (git-reference
+			    (url "https://github.com/zephyrproject-rtos/gcc")
+			    (commit "0218469df050c33479a1d5be3e5239ac0eb351bf")))
+		      (file-name (git-file-name (package-name xgcc) version))
+		      (sha256
+		       (base32 "1s409qmidlvzaw1ns6jaanigh3azcxisjplzwn7j2n3s33b76zjk"))
+		      (patches
+		       (search-patches "gcc-12-cross-environment-variables.patch"
+				       "gcc-cross-gxx-include-dir.patch"))))
+      (native-inputs
+       (modify-inputs (package-native-inputs xgcc)
+	 (delete "isl")
+	 (prepend flex
+		  isl-0.15)
+         (prepend flex which)))
+      (arguments
+       (substitute-keyword-arguments (package-arguments xgcc)
+	 ((#:phases phases)
+	  #~(modify-phases #$phases
+	      (delete 'pre-x86-configure)
 	      (add-after 'unpack 'fix-genmultilib
 		(lambda _
 		  (substitute* "gcc/genmultilib"
@@ -190,7 +303,7 @@
 	     #t)))))
     (native-inputs
      `(("xbinutils" ,riscv32-zephyr-elf-binutils)
-       ("xgcc" ,gcc-riscv32-zephyr-elf-12)
+       ("xgcc" ,gcc-riscv32-zephyr-elf-14)
        ("texinfo" ,texinfo)))
     (home-page "https://www.sourceware.org/newlib/")
     (synopsis "C library for use on embedded systems")
@@ -331,18 +444,27 @@ language is C.")
       (home-page (package-home-page xgcc))
       (license (package-license xgcc)))))
 
-(define-public riscv32-zephyr-elf-toolchain-12
+#;(define-public riscv32-zephyr-elf-toolchain-12
   (riscv32-zephyr-elf-toolchain
    gcc-riscv32-zephyr-elf-12
    riscv32-zephyr-elf-newlib))
 
-(define-public riscv32-zephyr-elf-nano-toolchain-12
+#;(define-public riscv32-zephyr-elf-nano-toolchain-12
   (riscv32-zephyr-elf-toolchain
    gcc-riscv32-zephyr-elf-12
    riscv32-zephyr-elf-newlib-nano))
 
+(define-public riscv32-zephyr-elf-toolchain-14
+  (riscv32-zephyr-elf-toolchain
+   gcc-riscv32-zephyr-elf-14
+   riscv32-zephyr-elf-newlib))
+
+(define-public riscv32-zephyr-elf-nano-toolchain-14
+  (riscv32-zephyr-elf-toolchain
+   gcc-riscv32-zephyr-elf-14
+   riscv32-zephyr-elf-newlib-nano))
+
 (define-public gdb-riscv32-zephyr-elf
-  ;; XXX: Does not work... I do not know why.
   (package
     (inherit gdb)
     (name "gdb-riscv32-zephyr-elf")
@@ -365,9 +487,34 @@ language is C.")
 		"--enable-interwork"
 		"--enable-languages=c"
 		"--disable-nls"
-		(delete "--enable-languages=" ,flags)))))))
+		(delete "--enable-languages=" #$flags)))))))
 
-(define-public riscv32-zephyr-elf-sdk
+(define-public gdb-riscv32-zephyr-elf
+  (package
+    (inherit gdb)
+    (name "gdb-riscv32-zephyr-elf")
+    (version "16.2")
+    (source
+     (origin (method git-fetch)
+	     (uri (git-reference
+		   (url "https://github.com/zephyrproject-rtos/binutils-gdb")
+		   (commit "0952b9d52545c7f3ab26d1b9bc348149a2a897e4")))
+	     (file-name (git-file-name name version))
+	     (sha256 (base32 "1jdc5id9h2a81fbfgi5hibzvjpx25rn8slr3c4fn2q4xrspj7sd0"))))
+    (native-inputs (modify-inputs
+       (package-native-inputs gdb)
+		 (append bison flex perl)))
+    (arguments
+     (substitute-keyword-arguments (package-arguments gdb)
+       ((#:configure-flags flags)
+	#~(cons* "--target=riscv32-zephyr-elf"
+		 "--enable-multilib"
+		 "--enable-interwork"
+		 "--enable-languages=c"
+		 "--disable-nls"
+		 (delete "--enable-languages=" #$flags)))))))
+
+#;(define-public riscv32-zephyr-elf-sdk
   (package
     (name "riscv32-zephyr-elf-sdk")
     (version "0.16.4")
@@ -413,6 +560,57 @@ language is C.")
      (list (search-path-specification
 	    (variable "ZEPHYR_SDK_INSTALL_DIR")
 	    (files '("zephyr-sdk-0.16.4")))))
+    (synopsis "SDK for zephyrRTOS")
+    (description "zephyr-sdk contains bundles a complete gcc toolchain as well
+as host tools like dtc, openocd, and qemu.")
+    (license license:apsl2)))
+
+(define-public riscv32-zephyr-elf-sdk
+  (package
+    (name "riscv32-zephyr-elf-sdk")
+    (version "1.0.1")
+    (home-page "https://zephyrproject.org")
+    (source (origin (method git-fetch)
+		    (uri (git-reference
+			  (url "https://github.com/zephyrproject-rtos/sdk-ng")
+			  (commit "v1.0.1")))
+		    (file-name (git-file-name name version))
+		    (sha256 (base32 "1h6lmf0s59issjg2s49mpjwivy56jv95m8f098fbhbz85xcsqq35"))))
+    (build-system trivial-build-system)
+    (arguments
+     `(#:modules ((guix build union)
+		  (guix build utils))
+       #:builder
+       (begin
+	 (use-modules (guix build union)
+		      (ice-9 match)
+		      (guix build utils))
+	 (let* ((out (assoc-ref %outputs "out"))
+		(cmake-scripts (string-append (assoc-ref %build-inputs "source")
+					      "/cmake"))
+		(sdk-out (string-append out "/zephyr-sdk-1.0.1")))
+	   (mkdir-p out)
+
+	   (match (assoc-remove! %build-inputs "source")
+	     (((names . directories) ...)
+	      (union-build sdk-out directories)))
+
+	   (copy-recursively cmake-scripts
+			     (string-append sdk-out "/cmake"))
+
+	   (with-directory-excursion sdk-out
+	     (call-with-output-file "sdk_version"
+	       (lambda (p)
+		 (format p "1.0.1")))
+	     #t)))))
+    (propagated-inputs
+     (list
+      riscv32-zephyr-elf-nano-toolchain-14
+      dtc))
+    (native-search-paths
+     (list (search-path-specification
+	    (variable "ZEPHYR_SDK_INSTALL_DIR")
+	    (files '("zephyr-sdk-1.0.1")))))
     (synopsis "SDK for zephyrRTOS")
     (description "zephyr-sdk contains bundles a complete gcc toolchain as well
 as host tools like dtc, openocd, and qemu.")
