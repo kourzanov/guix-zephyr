@@ -36,7 +36,7 @@
   #:use-module (zephyr packages python-xyz)
   )
 
-(define-public riscv32-zephyr-elf-binutils
+(define-public riscv32-zephyr-elf-binutils-old
   (let ((xbinutils (cross-binutils "riscv32-zephyr-elf")))
     (package
       (inherit xbinutils)
@@ -90,7 +90,7 @@
       (home-page "https://zephyrproject.org")
       (synopsis "binutils for zephyr RTOS"))))
 
-#;(define-public gcc-riscv32-zephyr-elf-12
+(define-public gcc-riscv32-zephyr-elf-12
   (let ((xgcc (cross-gcc "riscv32-zephyr-elf"
 			 #:xgcc gcc-12
 			 #:xbinutils riscv32-zephyr-elf-binutils)))
@@ -186,10 +186,10 @@
       (source (origin (method git-fetch)
 		      (uri (git-reference
 			    (url "https://github.com/zephyrproject-rtos/gcc")
-			    (commit "0218469df050c33479a1d5be3e5239ac0eb351bf")))
+			    (commit "35930988cbdc3c8dbf577372e5c567acb749ac4d")))
 		      (file-name (git-file-name (package-name xgcc) version))
 		      (sha256
-		       (base32 "1s409qmidlvzaw1ns6jaanigh3azcxisjplzwn7j2n3s33b76zjk"))
+		       (base32 "0n4r2b1viwq77d7r2qd8fars62jyckk6zrc4w676zq58rs85dsik"))
 		      (patches
 		       (search-patches "gcc-12-cross-environment-variables.patch"
 				       "gcc-cross-gxx-include-dir.patch"))))
@@ -261,7 +261,7 @@
       (home-page "https://zephyrproject.org")
       (synopsis "GCC for zephyr RTOS"))))
 
-(define-public riscv32-zephyr-elf-newlib
+(define-public riscv32-zephyr-elf-newlib-old
   (package
     (name "newlib-riscv32")
     (version "3.3")
@@ -269,7 +269,9 @@
 	      (method git-fetch)
 	      (uri (git-reference
 		    (url "https://github.com/zephyrproject-rtos/newlib-cygwin")
-		    (commit "4e150303bcc1e44f4d90f3489a4417433980d5ff")))
+		    ;(commit "4e150303bcc1e44f4d90f3489a4417433980d5ff")
+		    (commit "fc14a1b4c2fb7ccb860e323bd22faca0b2735b2a")
+		    ))
 	      (sha256
 	       (base32 "08qwjpj5jhpc3p7a5mbl7n6z7rav5yqlydqanm6nny42qpa8kxij"))))
     (build-system gnu-build-system)
@@ -292,7 +294,61 @@
 			   "--disable-newlib-supplied-syscalls"
 			   "--disable-newlib-target-optspace"
 			   "--disable-nls")
-       #:make-flags '("CFLAGS_FOR_TARGET=\"-O2\"")
+       #:make-flags '("CFLAGS_FOR_TARGET=\"-O2 -Wno-implicit-function-declaration\"")
+       #:phases
+       (modify-phases %standard-phases
+	 (add-after 'unpack 'fix-references-to-/bin/sh
+	   (lambda _
+	     (substitute* '("libgloss/libnosys/Makefile.in"
+			    "libgloss/Makefile.in")
+	       (("/bin/sh") (which "sh")))
+	     #t)))))
+    (native-inputs
+     `(("xbinutils" ,riscv32-zephyr-elf-binutils)
+       ("xgcc" ,gcc-riscv32-zephyr-elf-12)
+       ("texinfo" ,texinfo)))
+    (home-page "https://www.sourceware.org/newlib/")
+    (synopsis "C library for use on embedded systems")
+    (description "Newlib is a C library intended for use on embedded
+systems.  It is a conglomeration of several library parts that are easily
+usable on embedded products.")
+    (license (license:non-copyleft
+	      "https://www.sourceware.org/newlib/COPYING.NEWLIB"))))
+
+(define-public riscv32-zephyr-elf-newlib
+  (package
+    (name "newlib-riscv32")
+    (version "4.1.0")
+    (source (origin
+	      (method git-fetch)
+	      (uri (git-reference
+		    (url "https://github.com/zephyrproject-rtos/newlib-cygwin")
+		    ;(commit "4e150303bcc1e44f4d90f3489a4417433980d5ff")
+		    (commit "415fdd4279b85eeec9d54775ce13c5c412451e08")
+		    ))
+	      (sha256
+	       (base32 "0mzz81k4nm9kcryky6l1zxjdl4rzz2ybqa8412d467icygbvkqay"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:out-of-source? #t
+       #:configure-flags '("--target=riscv32-zephyr-elf"
+			   "--enable-headers"
+			   "--enable-newlib-io-long-long"
+			   "--enable-newlib-io-float"
+			   "--enable-newlib-io-c99-formats"
+			   "--enable-newlib-retargetable-locking"
+			   "--enable-newlib-lite-exit"
+			   "--enable-newlib-multithread"
+			   "--enable-newlib-register-fini"
+			   "--enable-newlib-extra-sections"
+			   "--disable-newlib-nano-malloc"
+			   "--disable-newlib-nano-formatted-io"
+			   "--disable-newlib-wide-orient"
+			   "--disable-newlib-fseek-optimization"
+			   "--disable-newlib-supplied-syscalls"
+			   "--disable-newlib-target-optspace"
+			   "--disable-nls")
+       #:make-flags '("CFLAGS_FOR_TARGET=\"-O2 -Wno-implicit-function-declaration -Wno-prio-ctor-dtor\"")
        #:phases
        (modify-phases %standard-phases
 	 (add-after 'unpack 'fix-references-to-/bin/sh
@@ -313,11 +369,189 @@ usable on embedded products.")
     (license (license:non-copyleft
 	      "https://www.sourceware.org/newlib/COPYING.NEWLIB"))))
 
+(define-public riscv32-zephyr-elf-newlib-new
+  (package
+    (name "newlib-riscv32")
+    (version "4.5.0")
+    (source (origin
+	      (method git-fetch)
+	      (uri (git-reference
+		    (url "https://github.com/zephyrproject-rtos/newlib-cygwin")
+		    ;(commit "4e150303bcc1e44f4d90f3489a4417433980d5ff")
+		    (commit "5e5e51f1dc56a99eb4648c28e00d73b6ea44a8b0")
+		    ))
+	      (sha256
+	       (base32 "1jfj9dwcz1my43h2q8nbph5zn624gqv49aairhszgxc6jqqbn77m"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:out-of-source? #t
+       #:configure-flags '("--target=riscv32-zephyr-elf"
+			   "--enable-headers"
+			   "--enable-newlib-io-long-long"
+			   "--enable-newlib-io-float"
+			   "--enable-newlib-io-c99-formats"
+			   "--enable-newlib-retargetable-locking"
+			   "--enable-newlib-lite-exit"
+			   "--enable-newlib-multithread"
+			   "--enable-newlib-register-fini"
+			   "--enable-newlib-extra-sections"
+			   "--disable-newlib-nano-malloc"
+			   "--disable-newlib-nano-formatted-io"
+			   "--disable-newlib-wide-orient"
+			   "--disable-newlib-fseek-optimization"
+			   "--disable-newlib-supplied-syscalls"
+			   "--disable-newlib-target-optspace"
+			   "--disable-nls")
+       #:make-flags '("CFLAGS_FOR_TARGET=\"-O2 -Wno-implicit-function-declaration\"")
+       #:phases
+       (modify-phases %standard-phases
+	 #;(add-after 'unpack 'fix-references-to-/bin/sh
+	   (lambda _
+	     (substitute* '("libgloss/libnosys/Makefile.in"
+			    "libgloss/Makefile.in")
+	       (("/bin/sh") (which "sh")))
+	     #t)))))
+    (native-inputs
+     `(("xbinutils" ,riscv32-zephyr-elf-binutils)
+       ("xgcc" ,gcc-riscv32-zephyr-elf-14)
+       ("texinfo" ,texinfo)))
+    (home-page "https://www.sourceware.org/newlib/")
+    (synopsis "C library for use on embedded systems")
+    (description "Newlib is a C library intended for use on embedded
+systems.  It is a conglomeration of several library parts that are easily
+usable on embedded products.")
+    (license (license:non-copyleft
+	      "https://www.sourceware.org/newlib/COPYING.NEWLIB"))))
+
+(define-public riscv32-zephyr-elf-newlib-nano-old
+  (package (inherit riscv32-zephyr-elf-newlib-old)
+    (name "newlib-nano-riscv32")
+    (arguments
+     (substitute-keyword-arguments (package-arguments riscv32-zephyr-elf-newlib-old)
+       ((#:configure-flags flags)
+	''("--target=riscv32-zephyr-elf"
+	   "--enable-multilib"
+	   "--enable-newlib-reent-small"
+	   "--enable-lite-exit"
+	   "--enable-newlib-global-atexit"
+	   "--enable-newlib-gcc-libstdcxx"
+	   "--enable-newlib-install-in-target"
+	   "--enable-newlib-io-float"
+	   "--enable-newlib-fvwrite-in-streamio"
+	   "--enable-newlib-atexit-dynamic-alloc"
+	   "--enable-newlib-global-atexit"
+	   "--enable-newlib-multithread"
+	   "--enable-newlib-retargetable-locking"
+	   "--enable-newlib-extra-sections"
+	   "--enable-newlib-target-optspace"
+	   "--enable-newlib-nano-malloc"
+	   "--enable-newlib-nano-formatted-io"
+	   "--enable-newlib-io-c99-formats"
+	   "--disable-newlib-io-long-long"
+	   "--disable-newlib-supplied-syscalls"
+	   "--disable-newlib-fseek-optimization"
+	   "--disable-newlib-wide-orient"
+	   "--disable-newlib-unbuf-stream-opt"
+	   "--disable-lto"
+	   "--disable-nls"))
+       ;((#:make-flags flags) ''("CFLAGS_FOR_TARGET=\"-mthumb-interwork\""))
+       ((#:phases phases)
+	`(modify-phases ,phases
+	   (add-after 'install 'hardlink-newlib
+	     (lambda* (#:key outputs #:allow-other-keys)
+	       (let ((out (assoc-ref outputs "out")))
+		 ;; The nano.specs file says that newlib-nano files should end
+		 ;; in "_nano.a" instead of just ".a".  Note that this applies
+		 ;; to all the multilib folders too.
+		 (for-each
+		  (lambda (file)
+		    (link file
+			  (string-append
+			   ;; Strip ".a" off the end
+			   (substring file 0 (- (string-length file) 2))
+			   ;; Add "_nano.a" onto the end
+			   "_nano.a")))
+		  (find-files
+		   out
+		   "^(libc.a|libg.a|librdimon.a|libstdc\\+\\+.a|libsupc\\+\\+.a)$"))
+
+		 ;; newlib.h is usually in this location instead so both
+		 ;; newlib and newlib-nano can be in the toolchain at the same
+		 ;; time
+		 (mkdir (string-append out "/riscv32-zephyr-elf/include/newlib-nano"))
+		 (symlink
+		  "../newlib.h"
+		  (string-append out "/riscv32-zephyr-elf/include/newlib-nano/newlib.h"))
+		 #t)))))))
+    (synopsis "Newlib variant for small systems with limited memory")))
+
 (define-public riscv32-zephyr-elf-newlib-nano
   (package (inherit riscv32-zephyr-elf-newlib)
     (name "newlib-nano-riscv32")
     (arguments
      (substitute-keyword-arguments (package-arguments riscv32-zephyr-elf-newlib)
+       ((#:configure-flags flags)
+	''("--target=riscv32-zephyr-elf"
+	   "--enable-multilib"
+	   "--enable-newlib-reent-small"
+	   "--enable-lite-exit"
+	   "--enable-newlib-global-atexit"
+	   "--enable-newlib-gcc-libstdcxx"
+	   "--enable-newlib-install-in-target"
+	   "--enable-newlib-io-float"
+	   "--enable-newlib-fvwrite-in-streamio"
+	   "--enable-newlib-atexit-dynamic-alloc"
+	   "--enable-newlib-global-atexit"
+	   "--enable-newlib-multithread"
+	   "--enable-newlib-retargetable-locking"
+	   "--enable-newlib-extra-sections"
+	   "--enable-newlib-target-optspace"
+	   "--enable-newlib-nano-malloc"
+	   "--enable-newlib-nano-formatted-io"
+	   "--enable-newlib-io-c99-formats"
+	   "--disable-newlib-io-long-long"
+	   "--disable-newlib-supplied-syscalls"
+	   "--disable-newlib-fseek-optimization"
+	   "--disable-newlib-wide-orient"
+	   "--disable-newlib-unbuf-stream-opt"
+	   "--disable-lto"
+	   "--disable-nls"))
+       ;((#:make-flags flags) ''("CFLAGS_FOR_TARGET=\"-mthumb-interwork\""))
+       ((#:phases phases)
+	`(modify-phases ,phases
+	   (add-after 'install 'hardlink-newlib
+	     (lambda* (#:key outputs #:allow-other-keys)
+	       (let ((out (assoc-ref outputs "out")))
+		 ;; The nano.specs file says that newlib-nano files should end
+		 ;; in "_nano.a" instead of just ".a".  Note that this applies
+		 ;; to all the multilib folders too.
+		 (for-each
+		  (lambda (file)
+		    (link file
+			  (string-append
+			   ;; Strip ".a" off the end
+			   (substring file 0 (- (string-length file) 2))
+			   ;; Add "_nano.a" onto the end
+			   "_nano.a")))
+		  (find-files
+		   out
+		   "^(libc.a|libg.a|librdimon.a|libstdc\\+\\+.a|libsupc\\+\\+.a)$"))
+
+		 ;; newlib.h is usually in this location instead so both
+		 ;; newlib and newlib-nano can be in the toolchain at the same
+		 ;; time
+		 (mkdir (string-append out "/riscv32-zephyr-elf/include/newlib-nano"))
+		 (symlink
+		  "../newlib.h"
+		  (string-append out "/riscv32-zephyr-elf/include/newlib-nano/newlib.h"))
+		 #t)))))))
+    (synopsis "Newlib variant for small systems with limited memory")))
+
+(define-public riscv32-zephyr-elf-newlib-nano-new
+  (package (inherit riscv32-zephyr-elf-newlib-new)
+    (name "newlib-nano-riscv32")
+    (arguments
+     (substitute-keyword-arguments (package-arguments riscv32-zephyr-elf-newlib-new)
        ((#:configure-flags flags)
 	''("--target=riscv32-zephyr-elf"
 	   "--enable-multilib"
@@ -444,27 +678,27 @@ language is C.")
       (home-page (package-home-page xgcc))
       (license (package-license xgcc)))))
 
-#;(define-public riscv32-zephyr-elf-toolchain-12
+(define-public riscv32-zephyr-elf-toolchain-12
   (riscv32-zephyr-elf-toolchain
    gcc-riscv32-zephyr-elf-12
-   riscv32-zephyr-elf-newlib))
+   riscv32-zephyr-elf-newlib-old))
 
-#;(define-public riscv32-zephyr-elf-nano-toolchain-12
+(define-public riscv32-zephyr-elf-nano-toolchain-12
   (riscv32-zephyr-elf-toolchain
    gcc-riscv32-zephyr-elf-12
-   riscv32-zephyr-elf-newlib-nano))
+   riscv32-zephyr-elf-newlib-nano-old))
 
 (define-public riscv32-zephyr-elf-toolchain-14
   (riscv32-zephyr-elf-toolchain
    gcc-riscv32-zephyr-elf-14
-   riscv32-zephyr-elf-newlib))
+   riscv32-zephyr-elf-newlib-new))
 
 (define-public riscv32-zephyr-elf-nano-toolchain-14
   (riscv32-zephyr-elf-toolchain
    gcc-riscv32-zephyr-elf-14
-   riscv32-zephyr-elf-newlib-nano))
+   riscv32-zephyr-elf-newlib-nano-new))
 
-(define-public gdb-riscv32-zephyr-elf
+(define-public gdb-riscv32-zephyr-elf-old
   (package
     (inherit gdb)
     (name "gdb-riscv32-zephyr-elf")
@@ -514,7 +748,7 @@ language is C.")
 		 "--disable-nls"
 		 (delete "--enable-languages=" #$flags)))))))
 
-#;(define-public riscv32-zephyr-elf-sdk
+(define-public riscv32-zephyr-elf-sdk-old
   (package
     (name "riscv32-zephyr-elf-sdk")
     (version "0.16.4")
@@ -615,4 +849,3 @@ as host tools like dtc, openocd, and qemu.")
     (description "zephyr-sdk contains bundles a complete gcc toolchain as well
 as host tools like dtc, openocd, and qemu.")
     (license license:apsl2)))
-
