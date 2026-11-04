@@ -223,7 +223,8 @@
 		    (format #t
 			    "environment variable `CPLUS_INCLUDE_PATH' changed to ~a~%"
 			    (getenv "CPLUS_INCLUDE_PATH"))
-		    #t)))))
+		    #t)))
+		))
 	 ((#:configure-flags flags)
 	  #~(append (list "--enable-multilib"
 			  "--with-newlib"
@@ -405,12 +406,19 @@ usable on embedded products.")
        #:make-flags '("CFLAGS_FOR_TARGET=\"-O2 -Wno-implicit-function-declaration\"")
        #:phases
        (modify-phases %standard-phases
+		(add-after 'install 'remove-info-pages
+	     (lambda* (#:key outputs #:allow-other-keys)
+	       (let ((out (assoc-ref outputs "out")))
+              (let ((info (string-append out "/share/info")))
+                (when (file-exists? info)
+                  (delete-file-recursively info))))))
 	 #;(add-after 'unpack 'fix-references-to-/bin/sh
 	   (lambda _
 	     (substitute* '("libgloss/libnosys/Makefile.in"
 			    "libgloss/Makefile.in")
 	       (("/bin/sh") (which "sh")))
-	     #t)))))
+	     #t))
+		)))
     (native-inputs
      `(("xbinutils" ,riscv32-zephyr-elf-binutils)
        ("xgcc" ,gcc-riscv32-zephyr-elf-14)
